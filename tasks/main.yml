@@ -1,0 +1,115 @@
+---
+
+- name: "setup passenger gpg keys"
+  apt_key:
+    url: "http://keyserver.ubuntu.com/pks/lookup?op=get&fingerprint=on&search=0xAC40B2F7"
+    id: "561F9B9CAC40B2F7"
+    state: present
+  tags:
+  - passenger
+
+- name: "setup passenger repo"
+  apt_repository:
+    repo: "deb https://oss-binaries.phusionpassenger.com/apt/passenger trusty main"
+    state: present
+  register: passenger_repo_added
+  tags:
+  - passenger
+
+- name: apt update cache
+  apt:
+    update_cache: yes
+  when: passenger_repo_added.changed
+  tags:
+  - passenger
+
+- name: install nginx & passenger
+  apt:
+    pkg: "{{ item }}"
+  with_items:
+  - nginx-extras
+  - passenger
+  tags:
+  - nginx
+  - passenger
+
+- include: remove-defaults.yml
+  when: keep_only_specified
+  tags:
+  - nginx
+
+- include: remove-config.yml
+  when: keep_only_specified
+  tags:
+  - nginx
+
+- name: create the directories for site specific configurations
+  file:
+    path: "{{nginx_conf_dir}}/{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  with_items:
+  - "sites-available"
+  - "sites-enabled"
+  tags:
+  - nginx
+
+- name: copy the nginx configuration file
+  template:
+    src: nginx.conf.j2
+    dest: "{{nginx_conf_dir}}/nginx.conf"
+  notify:
+  - restart nginx
+  tags:
+  - nginx
+
+- name: create the configurations for independent config file
+  template:
+    src: config.conf.j2
+    dest: "{{nginx_conf_dir}}/conf.d/{{ item }}.conf"
+  with_items: "{{nginx_configs.keys()}}"
+  notify:
+  - reload nginx
+  tags:
+  - config
+  - nginx
+
+- name: create configuration for sites
+  template:
+    src: site.conf.j2
+    dest: "{{nginx_conf_dir}}/sites-available/{{ item }}.conf"
+  with_items: "{{nginx_sites.keys()}}"
+  notify:
+  - reload nginx
+  tags:
+  - config
+  - nginx
+
+- name: create configuration for disabled sites
+  template:
+    src: site-disabled.conf.j2
+    dest: "{{nginx_conf_dir}}/sites-available/{{ item }}.conf"
+  with_items: "{{nginx_sites_disabled.keys()}}"
+  tags:
+  - config
+  - nginx
+
+- name: enable sites
+  file:
+    state: link
+    src: "{{nginx_conf_dir}}/sites-available/{{item}}.conf"
+    dest: "{{nginx_conf_dir}}/sites-enabled/{{item}}.conf"
+  with_items: "{{nginx_sites.keys()}}"
+  notify:
+  - reload nginx
+  tags:
+  - config
+  - nginx
+
+- name: validate nginx conf
+  command: nginx -t
+  changed_when: false
+  tags:
+  - nginx
