@@ -1,0 +1,31 @@
+galaxy_info:
+  author: Sébastien Elet
+  description: Setup nginx with passenger
+  company: SimpliField
+  license: BSD
+  min_ansible_version: 2
+  platforms:
+  - name: Ubuntu
+    versions:
+    - trusty
+    - utopic
+    - vivid
+    - wily
+    - xenial
+  galaxy_tags:
+  - system
+  - web
+  - proxy
+  - nginx
+dependencies:
+- role: SimpliField.packages
+  packages:
+  - apt-transport-https
+  - python-pycurl
+- role: SimpliField.users
+  users:
+  - www:
+    name: "www"
+    comment: "www user"
+    createhome: "no"
+    shell: "/bin/false"
