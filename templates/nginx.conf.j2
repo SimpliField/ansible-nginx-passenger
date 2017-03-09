@@ -1,0 +1,28 @@
+#{{ ansible_managed }}
+user www;
+pid /var/run/nginx.pid;
+worker_processes  4;
+
+events {
+  worker_connections 1024;
+}
+
+http {
+  sendfile on;
+  tcp_nopush on;
+  tcp_nodelay on;
+  keepalive_timeout 65;
+  types_hash_max_size 2048;
+  root /data/www/;
+
+  include {{nginx_conf_dir}}/mime.types;
+  default_type application/octet-stream;
+
+  access_log /var/log/nginx/access.log;
+  error_log /var/log/nginx/error.log debug;
+
+  #include {{nginx_conf_dir}}/naxsi_core.rules;
+  include {{nginx_conf_dir}}/passenger.conf;
+  include {{nginx_conf_dir}}/conf.d/*.conf;
+  include {{nginx_conf_dir}}/sites-enabled/*;
+}
